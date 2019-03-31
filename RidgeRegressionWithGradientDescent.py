@@ -9,7 +9,6 @@ import os
 import pandas as pd
 import numpy as np 
 import math
-import matplotlib.pyplot as plt 
 
 #This function is used to load CSV file from the 'data' directory 
 #in the present working directly 
