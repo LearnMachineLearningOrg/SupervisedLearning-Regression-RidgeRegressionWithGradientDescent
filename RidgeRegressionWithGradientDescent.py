@@ -8,6 +8,7 @@ Created on Sun Mar 31 16:02:15 2019
 import os
 import pandas as pd
 import numpy as np 
+import math
 import matplotlib.pyplot as plt 
 
 #This function is used to load CSV file from the 'data' directory 
@@ -39,6 +40,7 @@ def gradientDescentRidge(X, y, theta, alpha, tuningParameter, numberOfIterations
     m = np.size(y)
     J_history = np.zeros(numberOfIterations)
 
+
     for i in range(numberOfIterations):
         #Hypothesis function
         h = np.dot(X,theta)
@@ -46,13 +48,23 @@ def gradientDescentRidge(X, y, theta, alpha, tuningParameter, numberOfIterations
         #Grad function in vectorized form
         theta = theta - alpha * (1/m)* (  (X.T @ (h-y)) + tuningParameter * theta )
            
+        if i >= 1:
+            previousCost = cost
+            
         #Cost function in vectorized form       
-        J_history[i] = costFunctionReg(X,y,theta,tuningParameter)
+        J_history[i] = cost = costFunctionReg(X,y,theta,tuningParameter)
 
         print ("i {}, theta {}, cost {}".format(i, theta, J_history[i]))
         #print ("i {}, theta0 {}, theta1 {}, cost {}".format(i, theta[0][0], theta[1][0], J_history[i]))
-           
+
+        if i >= 1:
+            #Checking if the cost computed in the previous step and the 
+            #current step are close enough so that we can descide whether to 
+            #break from the iterations
+            if math.isclose(previousCost, cost, rel_tol=1e-9, abs_tol=0.0):
+                break
     return theta ,J_history
+           
 
 #Define file names and call loadCSV to load the CSV files
 dataFile = "Advertising.csv"
