@@ -4,50 +4,11 @@ Created on Sun Mar 31 16:02:15 2019
 
 @author: rajui
 """
+#importing packages
 import os
 import pandas as pd
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-
-def getOptimalWeightsUsingGradientDescent (x, y, mCurrent, bCurrent, 
-                                           numberOfIterations, learningRate):
-    n = len(x)
-    
-    for i in range(numberOfIterations):
-        #The hypothesis function y = mx + b
-        yPredicted = mCurrent * x + bCurrent
-                                
-        if i >= 1:
-            previousCost = cost
-
-        #The cost funtion, Mean Square Error function
-        cost = (1/n) * sum([val**2 for val in (y-yPredicted)])        
-        
-        #Note: Partial derivative gives us the slop or direction
-        #Calculate the patial derivative w.r.t 'm' to the cost function
-        mDerivativeOfCostFunction = -(2/n) * sum(x*(y-yPredicted))
-        #Calculate the patial derivative w.r.t 'm' to the cost function        
-        bDerivativeOfCostFunction = -(2/n) * sum(y-yPredicted)
-        #Computing the current 'm' value using the learning rate and 
-        #the partial derivative. We subtract because the derivatives point 
-        #in direction of steepest ascent
-        mCurrent = mCurrent - learningRate * mDerivativeOfCostFunction
-        #Computing the current 'b' value using the learning rate and 
-        #the partial derivative. We subtract because the derivatives point 
-        #in direction of steepest ascent
-        bCurrent = bCurrent - learningRate * bDerivativeOfCostFunction
-        print ("i {}, m {}, b {}, mDerivativeOfCostFunction {}, bDerivativeOfCostFunction {}, cost {}".format(i, mCurrent, bCurrent, mDerivativeOfCostFunction, bDerivativeOfCostFunction, cost))
-        
-        plt.plot(x, yPredicted, color='green', alpha=0.1)
-
-        if i >= 1:
-            #Checking if the cost computed in the previous step and the 
-            #current step are close enough so that we can descide whether to 
-            #break from the iterations
-            if math.isclose(previousCost, cost, rel_tol=1e-09, abs_tol=0.0):
-                plt.plot(x, yPredicted, color='red')
-                return;
+import numpy as np 
+import matplotlib.pyplot as plt 
 
 #This function is used to load CSV file from the 'data' directory 
 #in the present working directly 
@@ -58,51 +19,45 @@ def loadCSV (fileName):
     dataFilePath = os.path.join(dataDirectory, fileName)
     return pd.read_csv(dataFilePath)
 
-#This funtion is used to preview the data in the given dataset
-def previewData (dataSet):
-    print(dataSet.head())
-    print("\n")
-
-#This function is used to check for missing values in a given dataSet
-def checkForMissingValues (dataSet):
-    print(dataSet.isnull().sum())
-    print("\n")
-
-#This function is used to check the statistics of a given dataSet
-def getStatisticsOfData (dataSet):
-    print("***** Datatype of each column in the data set: *****")
-    dataSet.info()
-    print("\n")
-    print("***** Columns in the data set: *****")
-    print(dataSet.columns.values)
-    print("***** Details about the data set: *****")
-    print(dataSet.describe())
-    print("\n")
-    print("***** Checking for any missing values in the data set: *****")
-    checkForMissingValues(dataSet)
-    print("\n")
-
-#This funtion is used to handle the missing value in the features, in the 
-#given examples
-def handleMissingValues (feature):
-    feature = np.array(feature).reshape(-1, 1)
-    from sklearn.impute import SimpleImputer
-    imputer = SimpleImputer(missing_values=np.nan,strategy='mean')
-    imputer.fit(feature)
-    feature_values = imputer.fit_transform(feature)
-    return feature_values
+#This function is to compute the Ridge regression cost
+def costFunctionReg(X,y,theta,lamda = 10):
+    '''Cost function for ridge regression (regularized L2)'''
+    #Initialization
+    m = len(y) 
+    J = 0
     
+    #Vectorized implementation
+    h = X @ theta
+    J_reg = (lamda / (2*m)) * np.sum(np.square(theta))
+    J = float((1./(2*m)) * (h - y).T @ (h - y)) + J_reg;
+    return(J) 
+
+#This function performs ridge regression using gradient descent
+def gradientDescentRidge(X, y, theta, alpha, tuningParameter, numberOfIterations):
+    '''Gradient descent for ridge regression'''
+    #Initialisation of useful values 
+    m = np.size(y)
+    J_history = np.zeros(numberOfIterations)
+
+    for i in range(numberOfIterations):
+        #Hypothesis function
+        h = np.dot(X,theta)
+        
+        #Grad function in vectorized form
+        theta = theta - alpha * (1/m)* (  (X.T @ (h-y)) + tuningParameter * theta )
+           
+        #Cost function in vectorized form       
+        J_history[i] = costFunctionReg(X,y,theta,tuningParameter)
+
+        print ("i {}, theta {}, cost {}".format(i, theta, J_history[i]))
+        #print ("i {}, theta0 {}, theta1 {}, cost {}".format(i, theta[0][0], theta[1][0], J_history[i]))
+           
+    return theta ,J_history
+
 #Define file names and call loadCSV to load the CSV files
 dataFile = "Advertising.csv"
 dataSet = loadCSV(dataFile)
 dataSet.drop(['Unnamed: 0'], axis=1, inplace=True)
-
-#Preview the dataSet and look at the statistics of the dataSet
-#Check for any missing values 
-#so that we will know whether to handle the missing values or not
-print("** Preview the dataSet and look at the statistics of the dataSet **")
-previewData(dataSet)
-getStatisticsOfData(dataSet)
 
 #In this example we will be performing the Ridge regression to compute the model
 #that will be used to predict the sales given the information about how much 
@@ -111,50 +66,21 @@ getStatisticsOfData(dataSet)
 #We are dropping the sales column from dataset which is a label
 features = dataSet.drop(['sales','newspaper','radio'], axis=1)
 label = dataSet['sales'].values.reshape(-1,1)
-
 featuresArray = np.array(features)
 labelArray = np.array(label)
 
-print ("featuresArray: ", featuresArray)
-print ("labelArray: ", labelArray)
+#Defining initial weights
+#theta = np.array([7.,10.]).reshape(-1,1)
+theta = np.array([7.]).reshape(-1,1)
 
-"""
-#Initial values of m and b in the hypothesis function y = mx + b
-mCurrent = bCurrent = 0
+#Defining the learning rate
+learningRate = 0.01
 
-#Number of iterations
-numberOfIterations = 15000
+#Defining tuning parameter
+tuningParameter = 20
 
-#Learning rate
-learningRate = 0.02
+#Defining number of iterations
+numberOfIterations = 10
 
-#Invoke the getOptimalWeightsUsingGradientDescent function to perform the
-#Gradient descent algorithm
-getOptimalWeightsUsingGradientDescent (numberOfRoomsArray, priceOfHouseArray, 
-                                       mCurrent, bCurrent, 
-                                       numberOfIterations, learningRate)
-
-print ("************************ Linear Regression *********************")
-numberOfRooms = pd.DataFrame(np.c_[boston['RM']], columns = ['RM'])
-priceOfHouse = boston['MEDV']
-
-from sklearn.linear_model import LinearRegression
-regressor = LinearRegression()
-regressor.fit(numberOfRooms, priceOfHouse)
-
-#Predicting the prices
-predictedPriceOfHouse = regressor.predict(numberOfRooms)
-
-#The coefficients / the linear regression weights
-print ('Coefficients: ', regressor.coef_)
-
-#Calculating the Mean of the squared error
-from sklearn.metrics import mean_squared_error
-print ("Mean squared error: ", mean_squared_error(priceOfHouse, 
-                                                  predictedPriceOfHouse))
-
-#Finding out the accuracy of the model
-from sklearn.metrics import r2_score
-accuracyMeassure = r2_score(priceOfHouse, predictedPriceOfHouse)
-print ("Accuracy of model is {} %".format(accuracyMeassure*100))
-"""
+#Computing the gradient descent
+theta_result_reg,J_history_reg = gradientDescentRidge(featuresArray, labelArray, theta, learningRate, tuningParameter, numberOfIterations)
